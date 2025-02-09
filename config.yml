@@ -1,0 +1,66 @@
+---
+
+- name: Setup CA with SSL
+  hosts:
+       - 192.168.56.110
+       - 192.168.56.112
+  become: true
+  tasks:
+    - name: Update the package cache
+      apt:
+        update_cache: yes
+      become: yes
+
+    - name: Install OpenSSL and ca-certificates
+      apt:
+        name:
+          - openssl
+          - ca-certificates
+        state: present
+      become: yes
+
+    - name: Create Directory CA in /etc/ssl/
+      file:
+        path: /etc/ssl/CA
+        state: directory
+        mode: '0755'
+
+    - name: Create Directory newcerts in /etc/ssl/
+      file:
+        path: /etc/ssl/newcerts
+        state: directory
+        mode: '0755'
+
+    - name: Create a file named serial
+      copy:
+        dest: "/etc/ssl/CA/serial"
+        content: |
+          '01'
+        mode: '0755'
+
+    - name: Create a file named index.txt
+      file:
+        path: "/etc/ssl/CA/index.txt"
+        state: touch
+      become: yes
+
+    - name: Generate SSL private key
+      openssl_privatekey:
+        path: /etc/ssl/my_ca.key
+        size: 2048
+        state: present
+
+    - name: Generate a Certificate Signing Request (CSR)
+      openssl_csr:
+        path: /etc/ssl/my_ca.csr
+        privatekey_path: /etc/ssl/my_ca.key
+        common_name: my_ca
+        state: present
+
+    - name: Generate SSL Certificate
+      openssl_certificate:
+        path: /etc/ssl/my_ca.crt
+        privatekey_path: /etc/ssl/my_ca.key
+        csr_path: /etc/ssl/my_ca.csr
+        provider: selfsigned
+        state: present
